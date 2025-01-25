@@ -737,6 +737,19 @@ where
     pub fn dispatch(&mut self, msg: APP::MSG) {
         self.dispatch_multiple([msg])
     }
+
+    /// patch the DOM to reflect the App's view
+    ///
+    /// Note: This is in another function so as to allow tests to use this shared code
+    pub fn create_dom_patch(&self, new_vdom: &vdom::Node<APP::MSG>) -> Vec<DomPatch> {
+        create_dom_patch(
+            &self.root_node,
+            &self.app_context.current_vdom(),
+            new_vdom,
+            self.create_ev_callback()
+        )
+    }
+
 }
 
 fn create_dom_patch<Msg, F>(

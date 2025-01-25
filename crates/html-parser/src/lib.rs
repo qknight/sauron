@@ -30,7 +30,7 @@ pub enum ParseError {
     InvalidTag(String),
 }
 
-/// parse the html string and build a node tree
+/// parse escaped html strings like "Hello&#x20;world&#x21;" into "Hello world!" and then into a node tree
 pub fn raw_html<MSG>(html: &str) -> Node<MSG> {
     // decode html entitiesd back since it will be safely converted into text
     let html = html_escape::decode_html_entities(html);
@@ -39,7 +39,7 @@ pub fn raw_html<MSG>(html: &str) -> Node<MSG> {
         .expect("must have a node")
 }
 
-/// the document is not wrapped with html
+/// parse none-escaped html strings as "Hello world!" into a node tree (see also raw_html(...))
 pub fn parse_html<MSG>(html: &str) -> Result<Option<Node<MSG>>, ParseError> {
     let doc = Doc::parse(
         html,

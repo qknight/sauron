@@ -62,6 +62,8 @@ features = [
     "InputEvent",
     "console",
     "Performance",
+    "Element",
+    "Window",
 ]
 
 
