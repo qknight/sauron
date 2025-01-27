@@ -567,6 +567,7 @@ where
             new_vdom,
             &SkipPath::new(TreePath::root(), skip_diff.clone()),
         )
+        .unwrap()
     }
 
     #[cfg(feature = "with-raf")]
@@ -746,13 +747,12 @@ where
             &self.root_node,
             &self.app_context.current_vdom(),
             new_vdom,
-            self.create_ev_callback()
+            self.create_ev_callback(),
         )
     }
-
 }
 
-fn create_dom_patch<Msg, F>(
+pub fn create_dom_patch<Msg, F>(
     root_node: &Rc<RefCell<Option<DomNode>>>,
     current_vdom: &vdom::Node<Msg>,
     new_vdom: &vdom::Node<Msg>,
@@ -762,7 +762,7 @@ where
     Msg: 'static,
     F: Fn(Msg) + 'static + Clone,
 {
-    let patches = diff(&current_vdom, new_vdom);
+    let patches = diff(&current_vdom, new_vdom).unwrap();
 
     #[cfg(all(feature = "with-debug", feature = "log-patches"))]
     {
@@ -791,6 +791,7 @@ where
         new_vdom: vdom::Node<APP::MSG>,
     ) -> Result<usize, JsValue> {
         let dom_patches = self.create_dom_patch(&new_vdom);
+
         let total_patches = dom_patches.len();
         self.pending_patches.borrow_mut().extend(dom_patches);
 
