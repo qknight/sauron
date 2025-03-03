@@ -41,3 +41,13 @@ fn test_node_list() {
     println!("render: {}", node.render_to_string());
     assert_eq!(expected, node.render_to_string());
 }
+
+#[test]
+fn test_inline_style() {
+    let html = r#"<div id="there"><img src="posts/libnix/Nix_snowflake_windows.svg" class="noFancy" style="float: right;" width="200px"/></div>"#;
+    let expected = r#"<div id="there"><img src="posts/libnix/Nix_snowflake_windows.svg" class="noFancy" style="float:right;" width="200px"/></div>"#;
+    let node: Node<()> = parse_html(html).ok().flatten().expect("must parse");
+    println!("node: {:#?}", node);
+    println!("render: {}", node.render_to_string());
+    assert_eq!(expected, node.render_to_string());
+}

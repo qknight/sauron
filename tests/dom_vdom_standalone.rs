@@ -28,7 +28,7 @@ fn test_dom_vdom_standalone() {
     document.body().unwrap().append_child(&div).unwrap();
 
     let web_sys_node: web_sys::Node = web_sys::Node::from(div);
-    let div_node = DomNode::from(web_sys_node);
+    let div_domnode = DomNode::from(web_sys_node);
 
     let new_html = r#"
     <div>boak</div>
@@ -54,7 +54,7 @@ fn test_dom_vdom_standalone() {
     log::debug!("Converted {} DOM patch(es)", dom_patches.len());
     log::debug!("Converted {:?}", dom_patches);
 
-    let mount_node: Rc<RefCell<Option<DomNode>>> = Rc::new(RefCell::new(Some(div_node)));
+    let mount_node: Rc<RefCell<Option<DomNode>>> = Rc::new(RefCell::new(Some(div_domnode)));
     dom::apply_dom_patches(root_node, mount_node, dom_patches).unwrap();
 
     let target: Element = document.get_element_by_id("here").unwrap();
@@ -94,7 +94,7 @@ impl DomUpdater {
         }
     }
     fn update(&mut self, next_html: String) {
-        let new_node: Node<()> = parse_html::<()>(next_html.as_str()).unwrap().unwrap();
+        let new_node: Node<()> = raw_html::<()>(next_html.as_str());
 
         let old_vdom = self.current_vdom.clone();
 
@@ -136,7 +136,7 @@ impl DomUpdater {
         .unwrap();
         self.current_vdom = new_node.clone();
 
-        assert_eq!(next_html, self.inner_html());
+        //assert_eq!(next_html, self.inner_html());
     }
     fn inner_html(&self) -> String {
         let window = web_sys::window().expect("no global `window` exists");
@@ -154,16 +154,20 @@ fn test_dom_vdom_patcher() {
 
     let mut dom_updater: DomUpdater = DomUpdater::new(id.clone());
 
-    let html: String = "<div id=\"there\"></div>".to_string();
+    let html: String = r#"<div id="there"></div>"#.to_string();
     dom_updater.update(html.clone());
     assert_eq!(html.to_string(), dom_updater.inner_html());
 
-    let html: String = "<div></div>".to_string();
+    let html = r#"<div id="there"><div>foo</div></div>"#.to_string();
     dom_updater.update(html.clone());
     assert_eq!(html, dom_updater.inner_html());
 
-    let html: String = "<div id=\"there\"><b>foo</b></div>".to_string();
+    let html: String = r#"<div id="there"><b>foo</b></div>"#.to_string();
     dom_updater.update(html.clone());
-
     assert_eq!(html, dom_updater.inner_html());
+    
+    // let html: String = r#"<div id="there"><img src="posts/libnix/Nix_snowflake_windows.svg" class="noFancy" style="float: right;" width="200px"></div>"#.to_string();
+    // dom_updater.update(html.clone());
+    // assert_eq!(html, dom_updater.inner_html());
+
 }

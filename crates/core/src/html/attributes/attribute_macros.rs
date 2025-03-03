@@ -213,6 +213,7 @@ pub mod commons {
         srcset;
         start;
         step;
+        style;
         tabindex;
         target;
         title;

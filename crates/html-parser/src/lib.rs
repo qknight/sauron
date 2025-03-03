@@ -90,7 +90,24 @@ fn process_node<MSG>(node: &rphtml::parser::Node) -> Result<Option<Node<MSG>>, P
                             if let Some(attr_key) = lookup::match_attribute(&key) {
                                 let value = if let Some(value) = &attr.value {
                                     let value = String::from_iter(value.content.iter());
-                                    AttributeValue::Simple(Value::from(value))
+                                    if key == "style" {
+                                        let raw_tokens: Vec<String> = value.split(';').map(|s| s.trim().to_string()).collect();
+                                        let tokens: Vec<Style> = raw_tokens.iter().filter_map(|m| {
+                                            let t: Vec<String> = m.split(":").map(|s| s.trim().to_string()).collect();
+                                            if t.len() == 2 {
+                                                Some(Style::new(t[0].clone(), t[1].clone()))
+                                            } else {
+                                                None
+                                            }
+                                        }).collect();
+                                        if tokens.len() > 0 {
+                                            AttributeValue::Style(tokens)
+                                        } else {
+                                            AttributeValue::Empty        
+                                        }
+                                    } else {
+                                        AttributeValue::Simple(Value::from(value))
+                                    }
                                 } else {
                                     AttributeValue::Empty
                                 };
@@ -102,7 +119,6 @@ fn process_node<MSG>(node: &rphtml::parser::Node) -> Result<Option<Node<MSG>>, P
                         })
                     })
                     .collect();
-
                 Ok(Some(html_element(
                     None,
                     html_tag,

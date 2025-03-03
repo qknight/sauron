@@ -71,7 +71,6 @@ fn insert_multiple_before_nodes() {
     let expected1 = "<div id=\"there\"><b>foo</b></div>";
 
     assert_eq!(expected1, container.outer_html());
-    assert_eq!(1, 2);
 }
 
 #[wasm_bindgen_test]
