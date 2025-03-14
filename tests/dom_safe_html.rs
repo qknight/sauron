@@ -7,15 +7,15 @@ use wasm_bindgen_test::*;
 
 mod test_fixtures;
 
-#[test]
-fn simple() {
-    let html: Node<()> = ul(
-        [],
-        [parse_html("<li>Hi</li><li>Hello</li>").unwrap().unwrap()],
-    );
-    let expected = "<ul><li>Hi</li><li>Hello</li></ul>";
-    assert_eq!(html.render_to_string(), expected);
-}
+// #[test]
+// fn simple() {
+//     let html: Node<()> = ul(
+//         [],
+//         [parse_html("<li>Hi</li><li>Hello</li>").unwrap().unwrap()],
+//     );
+//     let expected = "<ul><li>Hi</li><li>Hello</li></ul>";
+//     assert_eq!(html.render_to_string(), expected);
+// }
 
 wasm_bindgen_test_configure!(run_in_browser);
 

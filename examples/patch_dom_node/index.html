@@ -6,7 +6,301 @@
     <title>Sauron • Use VDOM</title>
   </head>
   <body>
-    
+    <div id="control">
+      <button >asdf</button>
+    </div>
+    <div id="main">
+
+      <h1 id="SiteTitle">vscodium and nix develop</h1>
+      <div id="date"><p><span id="lastupdated">25 jun 2024</span></p></div><div id="tags"><p><a href="timeline.html?filter=tag::nix" class="tagbtn btn btn-primary">nix</a><a href="timeline.html?filter=tag::nixos-wsl" class="tagbtn btn btn-primary">nixos-wsl</a><a href="timeline.html?filter=tag::vscodium" class="tagbtn btn btn-primary">vscodium</a></p></div>
+      <p><a href="media/vscodium.png"><img src=media/vscodium.png class="noFancy" style="float: right"></a></p>
+  <h2 data-number="1" id="motivation">motivation</h2>
+  <p>this post is about how to <strong>connect visual studio code with
+  proper language support and code completion for rust</strong> to a nix
+  based toolchain inside nixos-wsl. this setup let’s me surf the code like
+  a html document!</p>
+  <p>the open source edition of microsoft <strong>visual studio
+  code</strong> called <a href="https://vscodium.com/">vscodium</a> is
+  being used. it features an implementation for remote code access via
+  ssh, which is also open source, and is called <a
+  href="https://github.com/jeanp413/open-remote-ssh/">open-remote-ssh</a>.</p>
+  <p><strong>note:</strong> for visual studio code this plugin called <a
+  href="https://github.com/Microsoft/vscode-remote-release">ms-vscode-remote.remote-ssh</a>
+  is closed source but should work for this setup, too.</p>
+  <h2 data-number="2" id="what-is-needed">what is needed</h2>
+  <ul>
+  <li>host: windows 10
+  <ul>
+  <li>vscodium on windows</li>
+  <li><a
+  href="https://open-vsx.org/extension/franneck94/vscode-rust-extension-pack">vscode-rust-extension-pack</a></li>
+  </ul></li>
+  <li>guest: nixos-wsl installation
+  <ul>
+  <li>working ssh configuration from host</li>
+  <li>setup nixos-vscode-server properly: <a
+  href="https://nixos.wiki/wiki/VSCodium">vscodium</a></li>
+  <li><a href="https://codeberg.org/slowtec/klick">klick</a>, an example
+  rust project</li>
+  </ul></li>
+  </ul>
+  <h3 data-number="2.1"
+  id="supported-nix-development-environments">supported nix development
+  environments</h3>
+  <p>there are several popular similar concepts:</p>
+  <ul>
+  <li><a href="https://nixos.wiki/wiki/Flakes">flakes</a></li>
+  <li><a href="https://devenv.sh/">devenv</a></li>
+  <li><a href="https://direnv.net/">direnv</a></li>
+  <li><a
+  href="https://nix.dev/manual/nix/2.22/command-ref/nix-shell">nix-shell</a></li>
+  <li><a href="https://github.com/flox/flox">flox</a></li>
+  </ul>
+  <h2 data-number="3" id="experimental-setup">experimental setup</h2>
+  <p>to learn about the vscodium implementation of ssh remote work i’ve
+  created this shell-wrapper on the nixos-wsl instance.</p>
+  <h3 data-number="3.1" id="nixos-wsl-configuration">nixos-wsl
+  configuration</h3>
+  <div class="sourceCode" id="cb1"><pre
+  class="sourceCode nix"><code class="sourceCode nix"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="op">{</span> <span class="va">config</span><span class="op">,</span> <span class="va">lib</span><span class="op">,</span> <span class="va">pkgs</span><span class="op">,</span> <span class="va">fetchurl</span><span class="op">,</span> <span class="va">fetchFromGitHub</span><span class="op">,</span> <span class="op">...</span> <span class="op">}</span>:</span>
+  <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+  <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span></span>
+  <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="va">rust_overlay</span> <span class="op">=</span> <span class="bu">import</span> <span class="op">(</span><span class="bu">fetchTarball</span> <span class="st">&quot;https://github.com/oxalica/rust-overlay/archive/master.tar.gz&quot;</span><span class="op">);</span></span>
+  <span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="va">pkgs</span> <span class="op">=</span> <span class="bu">import</span> &lt;nixpkgs&gt; <span class="op">{</span> <span class="va">overlays</span> <span class="op">=</span> <span class="op">[</span> rust_overlay <span class="op">];</span> <span class="op">};</span></span>
+  <span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  <span class="va">rust</span> <span class="op">=</span> pkgs.rust<span class="op">-</span>bin.stable.latest.default.override <span class="op">{</span></span>
+  <span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="va">extensions</span> <span class="op">=</span> <span class="op">[</span> <span class="st">&quot;rustfmt&quot;</span> <span class="st">&quot;clippy&quot;</span> <span class="op">];</span></span>
+  <span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="va">targets</span> <span class="op">=</span> <span class="op">[</span></span>
+  <span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;wasm32-unknown-unknown&quot;</span></span>
+  <span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    <span class="op">];</span></span>
+  <span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>  <span class="op">};</span></span>
+  <span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="kw">in</span></span>
+  <span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a></span>
+  <span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+  <span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>  <span class="va">imports</span> <span class="op">=</span> <span class="op">[</span></span>
+  <span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    <span class="co"># include NixOS-WSL modules</span></span>
+  <span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    &lt;<span class="ss">nixos-wsl/modules</span>&gt;</span>
+  <span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    <span class="op">(</span><span class="bu">fetchTarball</span> <span class="st">&quot;https://github.com/nix-community/nixos-vscode-server/tarball/master&quot;</span><span class="op">)</span></span>
+  <span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>  <span class="op">];</span></span>
+  <span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>  <span class="va">users</span>.<span class="va">users</span>.<span class="va">nixos</span>.<span class="va">shell</span> <span class="op">=</span> <span class="ss">/home/nixos/klick/bash-wrapper.sh</span><span class="op">;</span></span>
+  <span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a></span>
+  <span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>  <span class="va">nix</span>.<span class="va">settings</span>.<span class="va">experimental-features</span> <span class="op">=</span> <span class="op">[</span> <span class="st">&quot;nix-command&quot;</span> <span class="st">&quot;flakes&quot;</span> <span class="op">];</span></span>
+  <span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>  <span class="va">wsl</span>.<span class="va">enable</span> <span class="op">=</span> <span class="cn">true</span><span class="op">;</span></span>
+  <span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>  <span class="va">services</span>.<span class="va">vscode-server</span>.<span class="va">enable</span> <span class="op">=</span> <span class="cn">true</span><span class="op">;</span></span>
+  <span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>  <span class="va">environment</span>.<span class="va">systemPackages</span> <span class="op">=</span> <span class="kw">with</span> pkgs<span class="op">;</span> <span class="op">[</span> vim git tig dfc wineWowPackages.base jq direnv htop <span class="op">];</span></span>
+  <span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>  <span class="va">services</span>.<span class="va">openssh</span> <span class="op">=</span> <span class="op">{</span></span>
+  <span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>    <span class="va">enable</span> <span class="op">=</span> <span class="cn">true</span><span class="op">;</span></span>
+  <span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>  <span class="op">};</span></span>
+  <span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>  <span class="va">system</span>.<span class="va">stateVersion</span> <span class="op">=</span> <span class="st">&quot;23.05&quot;</span><span class="op">;</span> <span class="co"># Did you read the comment?</span></span>
+  <span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+  <h3 data-number="3.2"
+  id="homenixosklickbash-wrapper.sh">/home/nixos/klick/bash-wrapper.sh</h3>
+  <div class="sourceCode" id="cb2"><pre
+  class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">#!/run/current-system/sw/bin/bash</span></span>
+  <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="co"># </span><span class="al">NOTE</span><span class="co">: each change requires a &#39;nixos-rebuild switch&#39; run to become active</span></span>
+  <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+  <span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="bu">export</span> <span class="va">PATH</span><span class="op">=</span><span class="st">&quot;/run/current-system/sw/bin&quot;</span></span>
+  <span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a></span>
+  <span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> /home/nixos/klick</span>
+  <span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a></span>
+  <span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="fu">is_interactive()</span> <span class="kw">{</span></span>
+  <span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="co"># A shell is considered interactive if it has a terminal associated with standard input</span></span>
+  <span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="bu">[</span> <span class="ot">-t</span> 0 <span class="bu">]</span><span class="kw">;</span> <span class="cf">then</span></span>
+  <span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="dv">0</span></span>
+  <span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">else</span></span>
+  <span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="dv">1</span></span>
+  <span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">fi</span></span>
+  <span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a><span class="kw">}</span></span>
+  <span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a></span>
+  <span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a><span class="co"># Main execution starts here</span></span>
+  <span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a><span class="co"># Check if the shell is interactive</span></span>
+  <span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="ex">is_interactive</span><span class="kw">;</span> <span class="cf">then</span></span>
+  <span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>    <span class="co"># If the shell is interactive, call bash in interactive mode</span></span>
+  <span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>    <span class="co">#exec /run/current-system/sw/bin/bash</span></span>
+  <span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>    <span class="bu">echo</span> <span class="st">&quot;interactive&quot;</span></span>
+  <span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>    <span class="bu">exec</span> /run/current-system/sw/bin/nix develop <span class="at">--command</span> /run/current-system/sw/bin/bash</span>
+  <span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a><span class="cf">else</span></span>
+  <span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>    <span class="co"># If the shell is non-interactive, pass all arguments to bash</span></span>
+  <span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>    <span class="co">#exec /run/current-system/sw/bin/bash &quot;$@&quot;</span></span>
+  <span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a>    <span class="bu">echo</span> <span class="st">&quot;none interactive&quot;</span></span>
+  <span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>    <span class="bu">exec</span> /run/current-system/sw/bin/nix develop <span class="at">--command</span> /run/current-system/sw/bin/bash <span class="at">-c</span> <span class="st">&quot;</span><span class="va">$@</span><span class="st">&quot;</span></span>
+  <span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a><span class="cf">fi</span></span></code></pre></div>
+  <h2 data-number="4" id="how-to-use">how to use</h2>
+  <p>once everything is installed, do a <code>ssh nixos</code> and check
+  that you are inside the nix develop environment:</p>
+  <div class="sourceCode" id="cb3"><pre
+  class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">[nixos@nixos:~/klick]$</span> rustc <span class="at">--version</span></span>
+  <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="ex">rustc</span> 1.79.0 <span class="er">(</span><span class="ex">129f3b996</span> 2024-06-10<span class="kw">)</span></span></code></pre></div>
+  <p>then add this ssh remote into vscodium’s remote extension and load
+  the project.</p>
+  <p>inside the development console to the same
+  <code>rustc --version</code> check.</p>
+  <p><a href="media/vscodium-klick.JPG"><img src=media/vscodium-klick.JPG class="noFancy"></a></p>
+  <p><a href="media/vscodium-klick-ssh-shell.JPG"><img src=media/vscodium-klick-ssh-shell.JPG class="noFancy"></a></p>
+  <h2 data-number="5" id="future-potential">future potential</h2>
+  <p>using <code>vscodium</code> we <em>could create a way to
+  automatically load the <strong>nix development
+  environment</strong></em>, if detected. if in <a
+  href="https://code.visualstudio.com/docs/editor/workspace-trust">restricted
+  mode</a> no such shell should be started.</p>
+  <h3 data-number="5.1" id="how-shell-is-detected">how SHELL is
+  detected</h3>
+  <p>on <strong>nixos</strong> this is set as default:</p>
+  <div class="sourceCode" id="cb4"><pre
+  class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="bu">declare</span> <span class="at">-x</span> <span class="va">SHELL</span><span class="op">=</span><span class="st">&quot;/nix/store/agkxax48k35wdmkhmmija2i2sxg8i7ny-bash-5.2p26/bin/bash&quot;</span></span></code></pre></div>
+  <p>and resolved using this:</p>
+  <ul>
+  <li>vscode does the shell resolution internally at <a
+  href="https://github.com/microsoft/vscode/blob/4580ba51fe1914ca29916f829adb35930089b013/src/vs/platform/shell/node/shellEnv.ts#L102">microsoft/vscode</a></li>
+  <li>by default it will use the shell from <code>$SHELL</code> but if
+  that’s unset it will use node’s <code>userInfo().shell</code> which will
+  read <code>/etc/passwd</code>, see <a
+  href="https://github.com/microsoft/vscode/blob/4580ba51fe1914ca29916f829adb35930089b013/src/vs/base/node/shell.ts#L40-L48">microsoft/vscode</a>.</li>
+  </ul>
+  <p>see also discussion at <a
+  href="https://github.com/jeanp413/open-remote-ssh/issues/159"
+  class="uri">https://github.com/jeanp413/open-remote-ssh/issues/159</a></p>
+  <h3 data-number="5.2" id="proposal">proposal</h3>
+  <p>using a <code>.vscode-nix.toml</code> file in the source directory we
+  could help vscode to use the correct shell environment:</p>
+  <ul>
+  <li>modify the vscode resolver to check for a file named
+  <code>.vscode-nix.toml</code>, and if found, use that command inside the
+  SHELL</li>
+  <li>if that ‘nix develop’ like shell bails out with an error, don’t
+  clutter the user with an infinite reconnect loop and bogus error
+  messages</li>
+  </ul>
+  <h3 data-number="5.3" id="example-.vscode-nix.toml">example
+  <code>.vscode-nix.toml</code></h3>
+  <div class="sourceCode" id="cb5"><pre
+  class="sourceCode toml"><code class="sourceCode toml"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># .vscode-nix.toml</span></span>
+  <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="co"># This configuration file helps Visual Studio Code determine the shell to use for different Nix environments.</span></span>
+  <span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a></span>
+  <span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Specify the shell to use for Nix Flake&#39;s &#39;nix develop&#39;</span></span>
+  <span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="kw">[shell]</span></span>
+  <span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="dt">name</span> <span class="op">=</span> <span class="st">&quot;nix flake&quot;</span></span>
+  <span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="dt">command</span> <span class="op">=</span> <span class="st">&quot;nix develop&quot;</span></span>
+  <span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a></span>
+  <span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Specify the shell to use for Devenv</span></span>
+  <span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a><span class="co">#[shell]</span></span>
+  <span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a><span class="co">#name = &quot;devenv&quot;</span></span>
+  <span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a><span class="co">#command = &quot;devenv shell&quot;</span></span>
+  <span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a></span>
+  <span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a><span class="co"># Specify the shell to use for Direnv</span></span>
+  <span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a><span class="co">#[shell]</span></span>
+  <span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a><span class="co">#name = &quot;direnv&quot;</span></span>
+  <span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a><span class="co">#command = &quot;direnv allow &amp;&amp; direnv exec . $SHELL&quot;</span></span>
+  <span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a></span>
+  <span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a><span class="co"># Specify the shell to use for Nix Shell</span></span>
+  <span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a><span class="co">#[shell]</span></span>
+  <span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a><span class="co">#name = &quot;nix-shell&quot;</span></span>
+  <span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a><span class="co">#command = &quot;nix-shell&quot;</span></span>
+  <span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a></span>
+  <span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a><span class="co"># Specify the shell to use for flox.dev</span></span>
+  <span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a><span class="co">#[shell]</span></span>
+  <span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a><span class="co">#name = &quot;flox&quot;</span></span>
+  <span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a><span class="co">#command = &quot;flox activate&quot;</span></span></code></pre></div>
+  <p>so when vscode wants to start a shell, it will call the
+  <code>command</code> instead of
+  <code>/nix/store/agkxax48k35wdmkhmmija2i2sxg8i7ny-bash-5.2p26/bin/bash</code>.</p>
+  <h3 data-number="5.4"
+  id="nix-shell-error-handling-ux"><code>nix shell</code> error handling
+  UX</h3>
+  <p>if ‘nix develop’ fails for <strong>whatever reason</strong> using the
+  <code>/home/nixos/klick/bash-wrapper.sh</code> hack, we see it like:</p>
+  <p>this is from <code>wsl -d nixos</code>:</p>
+  <p><a href="media/vscodium-klick-ssh-shell-error-wsl-shell.jpg"><img src=media/vscodium-klick-ssh-shell-error-wsl-shell.jpg class="noFancy"></a></p>
+  <p>vscodium gets into a infinite error recursion loop and on top of
+  this, it does not <em>clearly outline the actual error</em>:</p>
+  <p><a href="media/vscodium-klick-ssh-shell-error.jpg"><img src=media/vscodium-klick-ssh-shell-error.jpg class="noFancy"></a></p>
+  <p>now keep in mind, that if vscodium handles the
+  <code>nix develop</code> (not using my
+  <code>/home/nixos/klick/bash-wrapper.sh</code> hack), then we already
+  have a working ssh shell but only the <code>nix develop</code> command
+  will fail.</p>
+  <p><strong>that said, the normal login shell then acts as a ‘rescue
+  development environment’ and this needs to be implemented in vscodium,
+  so it can be used to repair the nix expression. and once the nix code is
+  repaired, say on a manual trigger or a manual project reload, vscodium
+  will re-attach properly.</strong></p>
+  <h2 data-number="6" id="update-direnv-experiments">update: direnv
+  experiments</h2>
+  <p><a href="https://direnv.net/">direnv</a> has flake support and for my
+  local interactive shell this works great. however, i couldn’t get this
+  to work with a none-interactive (ssh shell) nor could i get it to work
+  with <a
+  href="https://github.com/jeanp413/open-remote-ssh/">open-remote-ssh</a>.</p>
+  <h3 data-number="6.1" id="configuration.nix">configuration.nix</h3>
+  <div class="sourceCode" id="cb6"><pre
+  class="sourceCode nix"><code class="sourceCode nix"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>  users.users.nixos.shell = <span class="ss">/home/nixos/klick/bash-wrapper.sh</span>;</span>
+  <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  programs.bash.shellInit = <span class="st">&#39;&#39;</span></span>
+  <span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="st">    trap &#39;source /home/nixos/klick/trap.sh&#39; DEBUG</span></span>
+  <span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="st">  &#39;&#39;</span>;</span></code></pre></div>
+  <h3 data-number="6.2" id="trap.sh">trap.sh</h3>
+  <div class="sourceCode" id="cb7"><pre
+  class="sourceCode bash"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="bu">echo</span> <span class="st">&quot;Command executed: </span><span class="va">$BASH_COMMAND</span><span class="st">&quot;</span> <span class="op">&gt;&gt;</span> /tmp/command_log.txt</span>
+  <span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="bu">eval</span> <span class="va">$(</span><span class="ex">direnv</span> export bash<span class="va">)</span></span></code></pre></div>
+  <h3 data-number="6.3" id="bash-wrapper.sh">bash-wrapper.sh</h3>
+  <div class="sourceCode" id="cb8"><pre
+  class="sourceCode bash"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="bu">export</span> <span class="va">PATH</span><span class="op">=</span><span class="st">&quot;/run/current-system/sw/bin&quot;</span></span>
+  <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="bu">echo</span> <span class="st">&quot;PWD: </span><span class="va">$PWD</span><span class="st">&quot;</span></span>
+  <span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a></span>
+  <span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="fu">is_interactive()</span> <span class="kw">{</span></span>
+  <span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>    <span class="co"># A shell is considered interactive if it has a terminal associated with standard input</span></span>
+  <span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="bu">[</span> <span class="ot">-t</span> 0 <span class="bu">]</span><span class="kw">;</span> <span class="cf">then</span></span>
+  <span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="dv">0</span></span>
+  <span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>    <span class="cf">else</span></span>
+  <span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="dv">1</span></span>
+  <span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">fi</span></span>
+  <span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a><span class="kw">}</span></span>
+  <span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a></span>
+  <span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Main execution starts here</span></span>
+  <span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a><span class="co"># Check if the shell is interactive</span></span>
+  <span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="ex">is_interactive</span><span class="kw">;</span> <span class="cf">then</span></span>
+  <span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>    <span class="co"># If the shell is interactive, call bash in interactive mode</span></span>
+  <span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a>    <span class="bu">echo</span> <span class="st">&quot;interactive&quot;</span></span>
+  <span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a>    <span class="bu">exec</span> direnv exec <span class="va">$PWD</span> /run/current-system/sw/bin/bash</span>
+  <span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a><span class="cf">else</span></span>
+  <span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a>    <span class="co"># If the shell is non-interactive, pass all arguments to bash</span></span>
+  <span id="cb8-21"><a href="#cb8-21" aria-hidden="true" tabindex="-1"></a>    <span class="bu">echo</span> <span class="st">&quot;none interactive&quot;</span></span>
+  <span id="cb8-22"><a href="#cb8-22" aria-hidden="true" tabindex="-1"></a>    <span class="bu">exec</span> direnv exec <span class="va">$PWD</span> /run/current-system/sw/bin/bash <span class="at">-c</span> <span class="st">&quot;</span><span class="va">$@</span><span class="st">&quot;</span></span>
+  <span id="cb8-23"><a href="#cb8-23" aria-hidden="true" tabindex="-1"></a><span class="cf">fi</span></span></code></pre></div>
+  <p>the result:</p>
+  <ul>
+  <li><p>the vscodium built-in console could find cargo correctly but
+  inside an interactive shell</p>
+  <pre><code>ssh nixos@nixos &quot;cd ~/klick; cargo --version&quot;
+  PWD: /home/nixos
+  none interactive
+  direnv: loading ~/klick/.envrc
+  direnv: using flake
+  direnv: nix-direnv: using cached dev shell
+  direnv: export +AR +AR_FOR_TARGET +AS +AS_FOR_TARGET +CC +CC_FOR_TARGET +CONFIG_SHELL +CXX +CXX_FOR_TARGET +GDK_PIXBUF_MODULE_FILE +GETTEXTDATADIRS +HOST_PATH +IN_NIX_SHELL +LD +LD_FOR_TARGET +NIX_BINTOOLS +NIX_BINTOOLS_FOR_TARGET +NIX_BINTOOLS_WRAPPER_TARGET_HOST_x86_64_unknown_linux_gnu +NIX_BINTOOLS_WRAPPER_TARGET_TARGET_x86_64_unknown_linux_gnu +NIX_BUILD_CORES +NIX_CC +NIX_CC_FOR_TARGET +NIX_CC_WRAPPER_TARGET_HOST_x86_64_unknown_linux_gnu +NIX_CC_WRAPPER_TARGET_TARGET_x86_64_unknown_linux_gnu +NIX_CFLAGS_COMPILE +NIX_CFLAGS_COMPILE_FOR_TARGET +NIX_ENFORCE_NO_NATIVE +NIX_HARDENING_ENABLE +NIX_LDFLAGS +NIX_LDFLAGS_FOR_TARGET +NIX_PKG_CONFIG_WRAPPER_TARGET_TARGET_x86_64_unknown_linux_gnu +NIX_STORE +NM +NM_FOR_TARGET +NODE_PATH +OBJCOPY +OBJCOPY_FOR_TARGET +OBJDUMP +OBJDUMP_FOR_TARGET +PKG_CONFIG_FOR_TARGET +PKG_CONFIG_PATH_FOR_TARGET +RANLIB +RANLIB_FOR_TARGET +READELF +READELF_FOR_TARGET +SIZE +SIZE_FOR_TARGET +SOURCE_DATE_EPOCH +STRINGS +STRINGS_FOR_TARGET +STRIP +STRIP_FOR_TARGET +__structuredAttrs +buildInputs +buildPhase +builder +cmakeFlags +configureFlags +depsBuildBuild +depsBuildBuildPropagated +depsBuildTarget +depsBuildTargetPropagated +depsHostHost +depsHostHostPropagated +depsTargetTarget +depsTargetTargetPropagated +doCheck +doInstallCheck +dontAddDisableDepTrack +mesonFlags +name +nativeBuildInputs +out +outputs +patches +phases +preferLocalBuild +propagatedBuildInputs +propagatedNativeBuildInputs +shell +shellHook +stdenv +strictDeps +system ~PATH ~XDG_DATA_DIRS
+  cargo 1.79.0 (ffa9cf99a 2024-06-03)</code></pre></li>
+  <li><p><strong>rust-analzyer</strong> couldn’t be found by vscodium</p>
+  <pre class="log"><code>2024-07-09T23:42:19.180018Z ERROR rust_analyzer::main_loop: FetchWorkspaceError:
+  rust-analyzer failed to load workspace: Failed to load the project at /home/nixos/klick/Cargo.toml: Failed to query rust toolchain version at /home/nixos/klick, is your toolchain setup correctly?: cd &quot;/home/nixos/klick&quot; &amp;&amp; &quot;cargo&quot; &quot;--version&quot; failed: No such file or directory (os error 2)
+  rust-analyzer failed to load workspace: Failed to load the project at /home/nixos/klick/frontend/Cargo.toml: Failed to query rust toolchain version at /home/nixos/klick/frontend, is your toolchain setup correctly?: cd &quot;/home/nixos/klick/frontend&quot; &amp;&amp; &quot;cargo&quot; &quot;--version&quot; failed: No such file or directory (os error 2)</code></pre></li>
+  </ul>
+  <p>according to the <code>tail -f /tmp/command_log.txt</code> vscodium’s
+  remote server is only started from the shell but internally seems to
+  ignore direnv. htop shows two bash instances of which one was the
+  interactive shell (used strace to check) but the other did not show any
+  sign of activity.</p>
+  <h2 data-number="7" id="summary">summary</h2>
+  <p>this hack shows the huge potential of using <code>nix develop</code>
+  in combination to powerful remote IDEs.</p>
+  <p>in fact, the proposed idea here is very similar to <a
+  href="https://fasterthanli.me/series/building-a-rust-service-with-nix/part-10#setting-up-direnv-in-vscode">direnv-in-vscode</a>,
+  except it does not require a specific program to be running on the
+  destination host or a specific vscode plugin as <a
+  href="https://github.com/direnv/direnv-vscode">direnv-vscode</a>.</p>
+  <p>i created a feature request for vscode: <a
+  href="https://github.com/microsoft/vscode/issues/218361"
+  class="uri">https://github.com/microsoft/vscode/issues/218361</a>.</p>
+     
+     </div>
+    </div>
 
   </body>
 </html>

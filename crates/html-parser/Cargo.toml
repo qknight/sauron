@@ -16,3 +16,8 @@ sauron-core = { version = "0.61", path = "../core", features = ["with-lookup"] }
 log = "0.4"
 thiserror = "1.0.48"
 html-escape = "0.2.13"
+
+html5ever = "0.29.1"
+markup5ever = "0.14.1"
+xml5ever = "0.20.0"
+markup5ever_rcdom = "0.5.0-unofficial"

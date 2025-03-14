@@ -29,9 +29,9 @@
         in
         with pkgs;
         rec {
-          #trunk = pkgs.callPackage ./trunk.nix {
-          #  inherit (darwin.apple_sdk.frameworks) CoreServices Security SystemConfiguration;
-          #};
+          trunk = pkgs.callPackage ./trunk.nix {
+            inherit (darwin.apple_sdk.frameworks) CoreServices Security SystemConfiguration;
+          };
           #leptosfmt = pkgs.callPackage ./leptosfmt.nix {};
 
           devShells.default = mkShell {
@@ -39,7 +39,7 @@
               rust
               wasm-pack
               firefox
-              #trunk                    # required to bundle the frontend
+              trunk                    # required to bundle the frontend
               binaryen                 # required to minify WASM files with wasm-opt
               git
               pkg-config

@@ -68,6 +68,7 @@ impl<MSG> Node<MSG> {
     pub fn render_to_string(&self) -> String {
         let mut buffer = String::new();
         self.render_compressed(&mut buffer).expect("must render");
+        //println!("render_to_string: {}", buffer);
         buffer
     }
 
@@ -151,6 +152,8 @@ impl<MSG> Element<MSG> {
 
         let is_lone_child_text_node = children.len() == 1 && is_first_child_text_node;
 
+        let indent = indent + 1;
+
         // do not indent if it is only text child node
         if is_lone_child_text_node {
             first_child
@@ -159,8 +162,8 @@ impl<MSG> Element<MSG> {
         } else {
             // otherwise print all child nodes with each line and indented
             for child in self.children() {
-                maybe_indent(buffer, indent + 1, compressed)?;
-                child.render_with_indent(buffer, indent + 1, compressed)?;
+                maybe_indent(buffer, indent, compressed)?;
+                child.render_with_indent(buffer, indent, compressed)?;
             }
         }
 

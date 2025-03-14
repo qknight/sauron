@@ -359,5 +359,7 @@ fn main() {
     log::debug!("Converted {} DOM patch(es)", dom_patches.len());
     log::debug!("Converted {:?}", dom_patches);
 
+
+
     dom::apply_dom_patches(root_node, mount_node, dom_patches).unwrap();
 }
